@@ -6,6 +6,34 @@ type TelegramEnv = Env & {
   TELEGRAM_CHAT_ID?: string;
 };
 
+async function discoverChatId(token: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${token}/getUpdates?limit=100`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      ok?: boolean;
+      result?: Array<{ message?: { text?: string; chat?: { id?: number; type?: string } } }>;
+    };
+    if (!data.ok) return null;
+    const ids = new Set(
+      (data.result ?? [])
+        .filter(({ message }) =>
+          message?.chat?.type === "private" &&
+          message.text?.startsWith("/start") &&
+          typeof message.chat.id === "number" &&
+          Number.isSafeInteger(message.chat.id)
+        )
+        .map(({ message }) => String(message!.chat!.id))
+    );
+    return ids.size === 1 ? [...ids][0] : null;
+  } catch {
+    return null;
+  }
+}
+
 function createServer(env: TelegramEnv) {
   const server = new McpServer({
     name: "telegram-report",
@@ -15,7 +43,7 @@ function createServer(env: TelegramEnv) {
   server.registerTool(
     "send_report",
     {
-      description: "Send one plain-text report to the configured Telegram chat. The dedupe_key is required but duplicate suppression is not implemented yet.",
+      description: "Send one plain-text report to the configured Telegram chat. With no chat ID configured, a unique private /start chat is used for setup. The dedupe_key is required but duplicate suppression is not implemented yet.",
       inputSchema: z.object({
         title: z.string().trim().min(1).max(120),
         body: z.string().trim().min(1).max(3500),
@@ -24,11 +52,18 @@ function createServer(env: TelegramEnv) {
     },
     async ({ title, body }) => {
       const token = env.TELEGRAM_BOT_TOKEN;
-      const chatId = env.TELEGRAM_CHAT_ID;
-      if (!token || !chatId) {
+      if (!token) {
         return {
           isError: true,
           content: [{ type: "text", text: "Telegram is not configured on this Worker." }]
+        };
+      }
+
+      const chatId = env.TELEGRAM_CHAT_ID ?? (await discoverChatId(token));
+      if (!chatId) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "No unique private /start chat found. Configure TELEGRAM_CHAT_ID." }]
         };
       }
 
@@ -66,7 +101,7 @@ function createServer(env: TelegramEnv) {
       return {
         content: [{
           type: "text",
-          text: `Report sent to Telegram (message ID ${result.result?.message_id ?? "unknown"}). Duplicate suppression is not active.`
+          text: `Report sent to Telegram (message ID ${result.result?.message_id ?? "unknown"}).${env.TELEGRAM_CHAT_ID ? "" : ` Set TELEGRAM_CHAT_ID to ${chatId}.`} Duplicate suppression is not active.`
         }]
       };
     }
