@@ -43,3 +43,4 @@ Connect an MCP client or the [MCP Inspector](https://github.com/modelcontextprot
 Use `createMcpHandler(createServer, { legacy: "reject" })` instead if the endpoint should accept only MCP `2026-07-28`.
 
 For Agents-owned route matching, CORS, OAuth context bridging, and temporary SDK v1 application compatibility, see [`mcp-worker`](../mcp-worker/).
+<!-- initial Cloudflare deployment -->
