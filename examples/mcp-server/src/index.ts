@@ -112,6 +112,6 @@ function createServer(env: TelegramEnv) {
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    return createMcpHandler(() => createServer(env as TelegramEnv))(request, env, ctx);
+    return createMcpHandler(() => createServer(env as TelegramEnv)).fetch(request, env, ctx);
   }
 };
