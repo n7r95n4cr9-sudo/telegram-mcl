@@ -1,13 +1,17 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "telegram-mcp-1b86",
   "main": "src/index.ts",
   "compatibility_date": "2026-06-11",
   "observability": {
-    "logs": {
-      "enabled": true
-    },
-    "traces": {
-      "enabled": true
+    "logs": { "enabled": true },
+    "traces": { "enabled": true }
+  },
+  "d1_databases": [
+    {
+      "binding": "REPORT_DB",
+      "database_name": "telegram-report-dedupe",
+      "database_id": "94b6b512-e761-49a5-b9ae-7c3ff8e1c83f"
     }
-  }
+  ]
 }
